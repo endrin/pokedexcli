@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
 type cliCommand struct {
@@ -29,11 +28,7 @@ func addHelp(registry commandsRegistry) {
 		name:        "help",
 		description: "Displays a help message",
 		callback: func() error {
-			fmt.Println(`
-Welcome to the Pokedex!
-Usage:`)
-
-			fmt.Println()
+			fmt.Print("Welcome to the Pokedex!\nUsage:\n\n")
 
 			for _, command := range registry {
 				fmt.Printf("%s: %s\n", command.name, command.description)
@@ -44,11 +39,4 @@ Usage:`)
 			return nil
 		},
 	})
-}
-
-func commandExit() error {
-	fmt.Println("Closing the Pokedex... Goodbye!")
-	os.Exit(0)
-
-	return nil
 }
