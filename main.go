@@ -16,9 +16,11 @@ func main() {
 			if len(commandWithArguments) == 0 {
 				continue
 			}
-			command := commandWithArguments[0]
+			keyword := commandWithArguments[0]
 			// args := commandWithArguments[1:]
-			fmt.Printf("Your command was: %s\n", command)
+			if err := executeCommand(keyword); err != nil {
+				fmt.Printf("Error executing `%s`: %v\n", keyword, err)
+			}
 		}
 	}
 }
