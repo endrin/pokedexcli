@@ -6,6 +6,22 @@ import (
 	"os"
 )
 
+var supportedCommands = commandsRegistry{}
+
+func init() {
+	addHelp(supportedCommands)
+	supportedCommands.register(cliCommand{
+		name:        "exit",
+		description: "Exit the Pokedex",
+		callback: func() error {
+			fmt.Println("Closing the Pokedex... Goodbye!")
+			os.Exit(0)
+
+			return nil
+		},
+	})
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
@@ -18,7 +34,7 @@ func main() {
 			}
 			keyword := commandWithArguments[0]
 			// args := commandWithArguments[1:]
-			if err := executeCommand(keyword); err != nil {
+			if err := supportedCommands.executeCommand(keyword); err != nil {
 				fmt.Printf("Error executing `%s`: %v\n", keyword, err)
 			}
 		}

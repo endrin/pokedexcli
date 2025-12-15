@@ -11,49 +11,44 @@ type cliCommand struct {
 	callback    func() error
 }
 
-var supportedCommands map[string]cliCommand
+type commandsRegistry map[string]cliCommand
 
-func init() {
-	supportedCommands = map[string]cliCommand{
-		"help": {
-			name:        "help",
-			description: "Displays a help message",
-			callback:    commandHelp,
-		},
-		"exit": {
-			name:        "exit",
-			description: "Exit the Pokedex",
-			callback:    commandExit,
-		},
-	}
+func (registry commandsRegistry) register(command cliCommand) {
+	registry[command.name] = command
 }
 
-func executeCommand(keyword string) error {
-	if command, ok := supportedCommands[keyword]; ok {
+func (registry commandsRegistry) executeCommand(keyword string) error {
+	if command, ok := registry[keyword]; ok {
 		return command.callback()
 	}
 	return fmt.Errorf("unknown command")
 }
 
-func commandExit() error {
-	fmt.Println("Closing the Pokedex... Goodbye!")
-	os.Exit(0)
-
-	return nil
-}
-
-func commandHelp() error {
-	fmt.Println(`
+func addHelp(registry commandsRegistry) {
+	registry.register(cliCommand{
+		name:        "help",
+		description: "Displays a help message",
+		callback: func() error {
+			fmt.Println(`
 Welcome to the Pokedex!
 Usage:`)
 
-	fmt.Println()
+			fmt.Println()
 
-	for _, command := range supportedCommands {
-		fmt.Printf("%s: %s\n", command.name, command.description)
-	}
+			for _, command := range registry {
+				fmt.Printf("%s: %s\n", command.name, command.description)
+			}
 
-	fmt.Println()
+			fmt.Println()
+
+			return nil
+		},
+	})
+}
+
+func commandExit() error {
+	fmt.Println("Closing the Pokedex... Goodbye!")
+	os.Exit(0)
 
 	return nil
 }
