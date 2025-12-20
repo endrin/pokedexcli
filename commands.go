@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 type cliCommand struct {
@@ -35,6 +36,19 @@ func addHelp(registry commandsRegistry) {
 			}
 
 			fmt.Println()
+
+			return nil
+		},
+	})
+}
+
+func addExit(registry commandsRegistry) {
+	registry.register(cliCommand{
+		name:        "exit",
+		description: "Exit the Pokedex",
+		callback: func() error {
+			fmt.Println("Closing the Pokedex... Goodbye!")
+			os.Exit(0)
 
 			return nil
 		},

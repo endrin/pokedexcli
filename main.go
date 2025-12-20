@@ -10,16 +10,8 @@ var supportedCommands = commandsRegistry{}
 
 func init() {
 	addHelp(supportedCommands)
-	supportedCommands.register(cliCommand{
-		name:        "exit",
-		description: "Exit the Pokedex",
-		callback: func() error {
-			fmt.Println("Closing the Pokedex... Goodbye!")
-			os.Exit(0)
-
-			return nil
-		},
-	})
+	addMap(supportedCommands)
+	addExit(supportedCommands)
 }
 
 func main() {
