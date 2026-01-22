@@ -59,15 +59,19 @@ func (mp *mapPage) get() ([]string, error) {
 }
 
 func (mp *mapPage) Next() ([]string, error) {
-	result, err := mp.get()
-	if err == nil {
+	if mp.cache == nil {
+		mp.cache = make(map[int][]string)
+	} else {
 		mp.offset += PAGE_SIZE
 	}
-	return result, err
+	return mp.get()
 }
 
 func (mp *mapPage) Previous() ([]string, error) {
 	if mp.offset < PAGE_SIZE {
+		if mp.cache != nil {
+			mp.offset = -PAGE_SIZE
+		}
 		return nil, fmt.Errorf("you're on the first page")
 	}
 	mp.offset -= PAGE_SIZE
@@ -75,9 +79,7 @@ func (mp *mapPage) Previous() ([]string, error) {
 }
 
 func addMap(registry commandsRegistry) {
-	currentPage := mapPage{
-		cache: make(map[int][]string),
-	}
+	currentPage := mapPage{}
 
 	registry.register(cliCommand{
 		name:        "map",
