@@ -1,12 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"pokedexcli/internal/pokecache"
+	"time"
 )
 
-const PAGE_SIZE int = 20
+const (
+	MAP_BASE_URL     string        = "https://pokeapi.co/api/v2/location-area/"
+	PAGE_SIZE        int           = 20
+	CACHE_RETIRE_AGE time.Duration = 5 * time.Minute
+)
 
 type Page interface {
 	Next() ([]string, error)
@@ -14,8 +22,9 @@ type Page interface {
 }
 
 type mapPage struct {
-	cache  map[int][]string
-	offset int
+	cache    *pokecache.Cache
+	next     string
+	previous string
 }
 
 type mapResponse struct {
@@ -28,58 +37,61 @@ type mapResponse struct {
 	} `json:"results"`
 }
 
-func (mp *mapPage) get() ([]string, error) {
-	if cached, ok := mp.cache[mp.offset]; ok {
-		return cached, nil
+func newMapPage() mapPage {
+	return mapPage{
+		cache: pokecache.NewCache(CACHE_RETIRE_AGE),
+		next:  fmt.Sprintf("%s?limit=%d", MAP_BASE_URL, PAGE_SIZE),
 	}
+}
 
-	pageUrl := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/?limit=%d&offset=%d", PAGE_SIZE, mp.offset)
-	res, err := http.Get(pageUrl)
-	if err != nil {
-		return nil, err
+func (mp *mapPage) get(pageUrl string) ([]string, error) {
+	var data io.ReadCloser
+	if cached, ok := mp.cache.Get(pageUrl); ok {
+		data = io.NopCloser(bytes.NewBuffer(cached))
+	} else {
+		res, err := http.Get(pageUrl)
+		if err != nil {
+			return nil, err
+		}
+
+		if res.StatusCode > 299 {
+			res.Body.Close()
+			return nil, fmt.Errorf("non-OK HTTP status: %s", res.Status)
+		}
+
+		data = res.Body
 	}
-	defer res.Body.Close()
+	defer data.Close()
 
-	if res.StatusCode > 299 {
-		return nil, fmt.Errorf("non-OK HTTP status: %s", res.Status)
-	}
-
-	decoder := json.NewDecoder(res.Body)
+	decoder := json.NewDecoder(data)
 	var mr mapResponse
 	if err := decoder.Decode(&mr); err != nil {
 		return nil, err
 	}
+
+	mp.next = mr.Next
+	mp.previous = mr.Previous
+
 	var names []string
 	for _, m := range mr.Results {
 		names = append(names, m.Name)
 	}
-
-	mp.cache[mp.offset] = names
 	return names, nil
 }
 
 func (mp *mapPage) Next() ([]string, error) {
-	if mp.cache == nil {
-		mp.cache = make(map[int][]string)
-	} else {
-		mp.offset += PAGE_SIZE
-	}
-	return mp.get()
+	return mp.get(mp.next)
 }
 
 func (mp *mapPage) Previous() ([]string, error) {
-	if mp.offset < PAGE_SIZE {
-		if mp.cache != nil {
-			mp.offset = -PAGE_SIZE
-		}
+	if mp.previous == "" {
 		return nil, fmt.Errorf("you're on the first page")
 	}
-	mp.offset -= PAGE_SIZE
-	return mp.get()
+	return mp.get(mp.previous)
 }
 
 func addMap(registry commandsRegistry) {
-	currentPage := mapPage{}
+	currentPage := newMapPage()
 
 	registry.register(cliCommand{
 		name:        "map",
